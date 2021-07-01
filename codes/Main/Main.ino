@@ -247,7 +247,6 @@ void loop()
   publish();
   debug_info();
 
-
 }
 
 
@@ -280,7 +279,7 @@ void _encoder()
   odom_msg.twist.twist.linear.x  = (encoder_vel) * 0.09 / 60; //conversion from rpm to m/s
   odom_msg.twist.twist.linear.y  = 0;
   odom_msg.twist.twist.linear.z  = 0;
-  odom_msg.twist.twist.angular.z = (encoder_vel) / (distance) * tan((s_pos) * M_PI / 180); //relation between angular velocity and steering angle in ackermann steering
+  odom_msg.twist.twist.angular.z = (odom_msg.twist.twist.linear.x) / (distance) * tan((s_pos) * M_PI / 180); //relation between angular velocity and steering angle in ackermann steering
 
 }
 
@@ -309,7 +308,6 @@ void _imu()
   imu_msg.linear_acceleration.y = ((acc[1]) * (9.81) / 16384);
   imu_msg.linear_acceleration.z = ((acc[2]) * (9.81) / 16384);
 
-
 }
 
 //Actuators function
@@ -333,7 +331,6 @@ void update_actuators()
 
 void _gps()
 {
-
 
   while (Serial_gps.available() > 0) // This function displays information every time a new sentence is correctly encoded.
     if (gps.encode(Serial_gps.read())) {
@@ -360,6 +357,7 @@ void _gps()
     //Serial.println(F("No GPS detected: check wiring."));
     while (true);
   }
+
 }
 
 
