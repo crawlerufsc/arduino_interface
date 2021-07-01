@@ -28,7 +28,7 @@ ros::NodeHandle  nh;
 sensor_msgs::Imu imu_msg;
 sensor_msgs::JointState state;
 sensor_msgs::NavSatFix sat_msg;
-nav_msgs::Odometry odom_msg;
+nav_msgs::Odometry wheel_encoder_msg;
 
 int m_vel;  // motor velocity between 0 and 255
 int s_pos;  // steering servo angle in degrees
@@ -39,7 +39,7 @@ void messageCb(const sensor_msgs::JointState& msg) {
 }
 
 ros::Publisher imu_pub("imu", &imu_msg);
-ros::Publisher odom_pub("odom", &odom_msg);
+ros::Publisher wheel_encoder_pub("wheel_encoder", &wheel_encoder_msg);
 ros::Publisher sat_pub("gps", &sat_msg);
 ros::Subscriber<sensor_msgs::JointState> state_sub("motor_state", &messageCb);
 
@@ -196,7 +196,7 @@ void setup()
 
   nh.initNode();
   nh.advertise(imu_pub);
-  nh.advertise(odom_pub);
+  nh.advertise(wheel_encoder_pub);
   nh.advertise(sat_pub);
   nh.subscribe(state_sub);
 
@@ -276,10 +276,10 @@ void _encoder()
 
   encoder_pos = position * 360 / 4094; //conversion from ecoder ticks to degrees;
 
-  odom_msg.twist.twist.linear.x  = (encoder_vel) * 0.09 / 60; //conversion from rpm to m/s
-  odom_msg.twist.twist.linear.y  = 0;
-  odom_msg.twist.twist.linear.z  = 0;
-  odom_msg.twist.twist.angular.z = (odom_msg.twist.twist.linear.x) / (distance) * tan((s_pos) * M_PI / 180); //relation between angular velocity and steering angle in ackermann steering
+  wheel_encoder_msg.twist.twist.linear.x  = (encoder_vel) * 0.09 / 60; //conversion from rpm to m/s
+  wheel_encoder_msg.twist.twist.linear.y  = 0;
+  wheel_encoder_msg.twist.twist.linear.z  = 0;
+  wheel_encoder_msg.twist.twist.angular.z = (wheel_encoder_msg.twist.twist.linear.x) / (distance) * tan((s_pos) * M_PI / 180); //relation between angular velocity and steering angle in ackermann steering
 
 }
 
@@ -370,7 +370,7 @@ void publish()
   if (millis() > publisher_timer) {
     
     imu_pub.publish(&imu_msg);
-    odom_pub.publish(&odom_msg);
+    wheel_encoder_pub.publish(&wheel_encoder_msg);
     sat_pub.publish(&sat_msg);
     
     publisher_timer = millis() + 100; //publish ten times a second
