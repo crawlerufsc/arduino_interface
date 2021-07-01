@@ -40,7 +40,7 @@ void messageCb(const sensor_msgs::JointState& msg) {
 
 ros::Publisher imu_pub("imu", &imu_msg);
 ros::Publisher wheel_encoder_pub("wheel_encoder", &wheel_encoder_msg);
-ros::Publisher sat_pub("gps", &sat_msg);
+ros::Publisher sat_pub("fix", &sat_msg);
 ros::Subscriber<sensor_msgs::JointState> state_sub("motor_state", &messageCb);
 
 long publisher_timer;
