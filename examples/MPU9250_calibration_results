@@ -1,0 +1,33 @@
+Mag Factory Calibration Values: 
+X-Axis sensitivity offset value 1.22
+Y-Axis sensitivity offset value 1.22
+Z-Axis sensitivity offset value 1.17
+Mag Calibration: Wave device in a figure eight until done!
+mag x min/max:
+-52
+-95
+mag y min/max:
+157
+117
+mag z min/max:
+-9
+-43
+Mag Calibration done!
+AK8963 mag biases (mG)
+-133.40, 250.35, -45.68
+AK8963 mag scale (mG)
+0.92, 0.97, 1.14
+Mag Factory Calibration Values: 
+X-Axis sensitivity offset value 1.22
+Y-Axis sensitivity offset value 1.22
+Z-Axis sensitivity offset value 1.17
+< calibration parameters >
+accel bias [g]: 
+217.70, -2000.00, -181.38
+gyro bias [deg/s]: 
+-6.83, -2.34, 1.65
+mag bias [mG]: 
+-133.40, 250.35, -45.68
+mag scale []: 
+0.92, 0.97, 1.14
+

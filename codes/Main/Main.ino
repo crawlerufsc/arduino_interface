@@ -106,8 +106,8 @@ int distance = 0.4; //  distance between rear and front wheels in meters
 int pitch;
 int roll;
 
-#define motor_front 3
-#define motor_back 4
+#define motor_front 31
+#define motor_back 53
 
 
 //AS5600 encoder definition
@@ -219,16 +219,17 @@ void setup()
 
   mpu.on_FIFO(print_Values);
 
-  servo_front.Attach(5, 45);
-  servo_back.Attach(6, 45);
-  servo_pitch.Attach(10, 0);
-  servo_roll.Attach(11, 0);
+  servo_front.Attach(3, 45);
+  servo_back.Attach(49, 45);
+  servo_pitch.Attach(33, 0);
+  servo_roll.Attach(35, 0);
   
   //  Configures the state of the previously declared pins
   pinMode(motor_front, OUTPUT); 
   pinMode(motor_back, OUTPUT);
   
   //  Setup the initial velocity of the motor pins
+  
   analogWrite(motor_front, init_vel);
   analogWrite(motor_back, init_vel);
 
@@ -317,15 +318,17 @@ void _imu()
 
 void update_actuators()
 {
-
+  
   servo_front.Update(45 - s_pos);
   servo_back.Update(45 - s_pos);
   servo_pitch.Update(servo_p);
   servo_roll.Update(servo_r);
+  servo_roll.Update(servo_r);
 
-  analogWrite(motor_front, m_vel);
-  analogWrite(motor_back, m_vel);
-
+  digitalWrite(motor_front, m_vel);
+  digitalWrite(motor_back, m_vel);
+  
+  
 }
 
 //GPS function
