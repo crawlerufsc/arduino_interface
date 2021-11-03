@@ -148,8 +148,8 @@ void update_actuators()
   servo_front.Update(45 - s_pos);
   servo_back.Update(45 + s_pos);
 
-  analogWrite(motor_front, -m_vel+255);
-  analogWrite(motor_back, -m_vel+255);  
+  analogWrite(motor_front, m_vel);
+  analogWrite(motor_back, m_vel);  
   
   analogWrite(13, m_vel);
 }
