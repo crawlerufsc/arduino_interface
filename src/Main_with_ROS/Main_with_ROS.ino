@@ -12,12 +12,15 @@
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/JointState.h>
 #include <sensor_msgs/NavSatFix.h>
+#include <sensor_msgs/Joy.h>
 #include <nav_msgs/Odometry.h>
 
 #include <AS5600.h>
 #include <Servo.h>
 #include <TinyGPS++.h>
 #include <SoftwareSerial.h>
+#include <I2Cdev.h>
+#include <Wire.h>
 #include <Simple_MPU6050.h>
 
 //ROS definitions
@@ -26,25 +29,32 @@
 ros::NodeHandle  nh;
 
 sensor_msgs::Imu imu_msg;
-sensor_msgs::JointState state;
+sensor_msgs::JointState state_msg;
 sensor_msgs::NavSatFix sat_msg;
+sensor_msgs::Joy joy_msg;
 nav_msgs::Odometry wheel_encoder_msg;
 
 int m_vel;  // motor velocity between 0 and 255
 int s_pos;  // steering servo angle in degrees
 
-void messageCb(const sensor_msgs::JointState& msg) {
-  m_vel = state.velocity;
-  s_pos = state.position;
+float a1; //joystick axis 1 from -1 to 1
+float a2; //joystick axis 2 from -1 to 1
+
+long previous_time = 0;
+long previous_time_imu = 0;
+long previous_time_fix = 0;
+long previous_time_wheel_encoder = 0;
+
+void joyCb(const sensor_msgs::Joy& msg) {
+    a1 = msg.axes[1];
+    a2 = msg.axes[3];
 }
 
 ros::Publisher imu_pub("imu", &imu_msg);
 ros::Publisher wheel_encoder_pub("wheel_encoder", &wheel_encoder_msg);
 ros::Publisher sat_pub("fix", &sat_msg);
-ros::Subscriber<sensor_msgs::JointState> state_sub("motor_state", &messageCb);
-
-long publisher_timer;
-
+ros::Publisher state_pub("state", &state_msg);
+ros::Subscriber<sensor_msgs::Joy> joy_sub("joy", &joyCb);
 
 //Servo class definition
 //-----------------------------------------------------------------------------------------
@@ -100,14 +110,14 @@ _servo servo_back(100);
 _servo servo_pitch(100);
 _servo servo_roll(100);
 
-int init_vel = 255;
+int init_vel = 0;
 
 int distance = 0.4; //  distance between rear and front wheels in meters
 int pitch;
 int roll;
 
-#define motor_front 31
-#define motor_back 53
+#define motor_front 3
+#define motor_back 4
 
 
 //AS5600 encoder definition
@@ -178,9 +188,9 @@ void print_Values (int16_t *gyro, int16_t *accel, int32_t *quat, uint32_t *times
 //GPS NEO-6M definition
 //-----------------------------------------------------------------------------------------
 
-int rx = 10, tx = 11;
+int rx = 12, tx = 13;
 
-double lt; 
+double lt;
 double ln;
 double alt;
 double spd;
@@ -198,38 +208,42 @@ void setup()
   nh.advertise(imu_pub);
   nh.advertise(wheel_encoder_pub);
   nh.advertise(sat_pub);
-  nh.subscribe(state_sub);
+  nh.advertise(state_pub);
+  nh.subscribe(joy_sub);
 
   uint8_t val;
 
   Wire.begin();
+
   Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
+  Wire.setWireTimeout(3000, true);
+  Wire.clearWireTimeoutFlag();
 
   // initialize serial communication
   Serial.begin(115200);
 
   Serial_gps.begin(9600);
 
-#ifdef OFFSETS
-  Serial.println(F("Using Offsets"));
-  mpu.SetAddress(MPU6050_DEFAULT_ADDRESS).load_DMP_Image(OFFSETS); // Does it all for you
-#else
-  mpu.SetAddress(MPU6050_DEFAULT_ADDRESS).CalibrateMPU().load_DMP_Image();// Does it all for you with Calibration
-#endif
+  #ifdef OFFSETS
+    //Serial.println(F("Using Offsets"));
+    mpu.SetAddress(MPU6050_DEFAULT_ADDRESS).load_DMP_Image(OFFSETS); // Does it all for you
+  #else
+    mpu.SetAddress(MPU6050_DEFAULT_ADDRESS).CalibrateMPU().load_DMP_Image();// Does it all for you with Calibration
+  #endif
 
   mpu.on_FIFO(print_Values);
 
-  servo_front.Attach(3, 45);
+  servo_front.Attach(51, 45);
   servo_back.Attach(49, 45);
   servo_pitch.Attach(33, 0);
   servo_roll.Attach(35, 0);
-  
+
   //  Configures the state of the previously declared pins
-  pinMode(motor_front, OUTPUT); 
+  pinMode(motor_front, OUTPUT);
   pinMode(motor_back, OUTPUT);
-  
+
   //  Setup the initial velocity of the motor pins
-  
+
   analogWrite(motor_front, init_vel);
   analogWrite(motor_back, init_vel);
 
@@ -243,11 +257,12 @@ void loop()
 
   _imu();
   _encoder();
-  _gps();
+  //_gps();
   update_actuators();
   publish();
-  debug_info();
-
+  //debug_info();
+  nh.spinOnce();
+  
 }
 
 
@@ -316,17 +331,23 @@ void _imu()
 
 void update_actuators()
 {
-  
-  servo_front.Update(45 - s_pos);
+
+  m_vel = int(145*abs(a1));
+  s_pos = int((45*a2));
+
+  state_msg.velocity = m_vel;
+  state_msg.position = s_pos;
+
+  servo_front.Update(45 + s_pos);
   servo_back.Update(45 - s_pos);
   servo_pitch.Update(servo_p);
   servo_roll.Update(servo_r);
   servo_roll.Update(servo_r);
 
-  digitalWrite(motor_front, m_vel);
-  digitalWrite(motor_back, m_vel);
-  
-  
+  analogWrite(motor_front, m_vel);
+  analogWrite(motor_back, m_vel);
+
+
 }
 
 //GPS function
@@ -370,15 +391,27 @@ void _gps()
 void publish()
 {
 
-  if (millis() > publisher_timer) {
-    
-    imu_pub.publish(&imu_msg);
+  
+  if ((millis() - previous_time_wheel_encoder) > 200 ) {
+    previous_time_wheel_encoder = millis();
     wheel_encoder_pub.publish(&wheel_encoder_msg);
-    sat_pub.publish(&sat_msg);
-    
-    publisher_timer = millis() + 100; //publish ten times a second
-    nh.spinOnce();
   }
+  
+
+  
+  if ((millis() - previous_time_imu) > 100 ) {
+    previous_time_imu = millis();
+    imu_pub.publish(&imu_msg);
+    state_pub.publish(&state_msg);
+  }
+  
+
+  /*
+  if ((millis() - previous_time_fix) > 2000 ) {
+    previous_time_imu = millis();
+    sat_pub.publish(&sat_msg);
+  }
+  */
 
 }
 
@@ -398,6 +431,8 @@ void debug_info()
   //Serial.printfloatx("gx ", gyr[0], 0, 0, F(" , "));
   //Serial.printfloatx("gy ", gyr[1], 0, 0, F(" , "));
   //Serial.printfloatx("gz ", gyr[2], 0, 0, F(" , "));
+  //Serial.printfloatx("lat ", gps.location.lat(), 0, 0, F(" , "));
+  //Serial.printfloatx("long ", gps.location.lng(), 0, 0, F(" , "));
   //Serial.printfloatx("e_pos ", encoder_pos, 0, 0, F(" , "));
   //Serial.printfloatx("e_vel ", encoder_vel, 0, 0, F(" , "));
   //Serial.printfloatx("s_y ", servo_y, 0, 0, F(" , "));
@@ -405,6 +440,8 @@ void debug_info()
   //Serial.printfloatx("s_r ", servo_r, 0, 0, F(" , "));
   //Serial.printfloatx("s_pos ", 45-pos , 0, 0, F(" , "));
   //Serial.printfloatx("vel ", vel, 5, 0, F(" , "));
+  //Serial.printfloatx("a1 ", a1, 0, 4, F(" , "));
+  //Serial.printfloatx("a2 ", a2, 0, 4, F(" , "));
   //Serial.println();
 
 }
