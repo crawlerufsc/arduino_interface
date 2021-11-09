@@ -19,7 +19,11 @@
 
 byte dataArray[3]; // array to store the joystick variables
 int m_vel;        // motor velocity between 0 and 255
-int s_pos;       // steering servo angle in degrees
+int s_pos;       // steering servo angle in degrees 0 - 90
+int last_m_vel    = 0;
+int last_s_pos    = 45;
+int m_vel_change_lim = 10;
+int s_pos_change_lim = 5;
 
 #define printfloatx(Name,Variable,Spaces,Precision,EndTxt) print(Name); {char S[(Spaces + Precision + 3)];Serial.print(F(" ")); Serial.print(dtostrf((float)Variable,Spaces,Precision ,S));}Serial.print(EndTxt);//Name,Variable,Spaces,Precision,EndTxt
 
@@ -91,7 +95,11 @@ int roll;
 
 void setup()
 {
-
+  //  initialize dataArray
+  dataArray[0] = 0;
+  dataArray[1] = 0;
+  dataArray[2] = 45;
+  
   Wire.begin(SLAVE_ADDRESS);
   Wire.onReceive(receiveEvent);
 
@@ -110,7 +118,6 @@ void setup()
 
   digitalWrite(motor_front, LOW);
   digitalWrite(motor_back, LOW);
-
 }
 
 
@@ -136,6 +143,23 @@ void receiveEvent(int howmany) //howmany = Wire.write()executed by Master
   }
 }
 
+//Smooth update function
+//-----------------------------------------------------------------------------------------
+inline void smooth_update(){
+  
+  if(m_vel - last_m_vel > m_vel_change_lim){
+    m_vel = last_m_vel + m_vel_change_lim;
+  }else if(m_vel - last_m_vel < -m_vel_change_lim){
+    m_vel = last_m_vel - m_vel_change_lim;
+  }
+  
+  if(s_pos - last_s_pos > s_pos_change_lim){
+    s_pos = last_s_pos + s_pos_change_lim;
+  }else if(s_pos - last_s_pos < -s_pos_change_lim){
+    s_pos = last_s_pos - s_pos_change_lim;
+  }
+}
+
 //Actuators function
 //-----------------------------------------------------------------------------------------
 
@@ -143,15 +167,23 @@ void update_actuators()
 {
 
   m_vel = int(dataArray[1]);
-  s_pos = int(dataArray[2]) - 45;
+//  s_pos = int(dataArray[2]) - 45;
+  s_pos = int(dataArray[2]);
+  
+  smooth_update();
 
-  servo_front.Update(45 - s_pos);
-  servo_back.Update(45 + s_pos);
+//  servo_front.Update(45 - s_pos);
+//  servo_back.Update(45 + s_pos);
+  servo_front.Update(s_pos);
+  servo_back.Update(45);
 
   analogWrite(motor_front, m_vel);
   analogWrite(motor_back, m_vel);  
   
   analogWrite(13, m_vel);
+  
+  last_m_vel = m_vel;
+  last_s_pos = s_pos;
 }
 
 //Debug function
