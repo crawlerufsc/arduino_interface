@@ -76,8 +76,8 @@ class _servo
 //Actuators definition
 //-----------------------------------------------------------------------------------------
 
-_servo servo_front(100);
-_servo servo_back(100);
+_servo servo_front(10);
+_servo servo_back(10);
 _servo servo_pitch(100);
 _servo servo_roll(100);
 
@@ -175,7 +175,8 @@ void update_actuators()
 //  servo_front.Update(45 - s_pos);
 //  servo_back.Update(45 + s_pos);
   servo_front.Update(s_pos);
-  servo_back.Update(45);
+//  servo_back.Update(45);
+  servo_back.Update(90 - s_pos);
 
   analogWrite(motor_front, m_vel);
   analogWrite(motor_back, m_vel);  
